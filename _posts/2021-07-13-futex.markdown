@@ -1,1 +1,72 @@
-Futex is abbreivation of Fast Userspace muTEX
+Futex is abbreivation of Fast Userspace muTEX.
+
+It is a linux system call but it's wrapper is not shipped in libc implementations. (AFIAK)
+
+Therefore, to call futex you might define your own wrapper like ...
+
+```
+int futex(int* uaddr, int futex_op, int val, const struct timespec* timeout,
+		int* uaddr2, int val3) {
+	return syscall(SYS_futex, uaddr, futex_op, val, timeout, uaddr2, val3);
+}
+```
+
+_uaddr_ is the address of a variable that you want to use as watchpoint.
+
+_uaddr_ needs to be 4-bytes aligned.
+
+_futex_op_ is the operation you want to perform, two major operation is FUTEX_WAIT and FUTEX_WAKE.
+
+FUTEX_WAIT is used when you want to sleep until the value _uaddr_ points to holds _val_.
+
+If not, futex() returns immediately.
+
+FUTEX_WAKE is used to wake up threads sleeping on the futex with _uaddr_ pointers.
+
+It wakes _val_ number of threads and returns the number of actually woken up.
+
+futex is used in userspace blocking synchronization.
+
+For example, pthreads mutex and conditional variable is implemented using futex.
+
+```
+void FutexLock::lock() {
+	for (int i = 0 ; i < N_BACKOFF ; i++) {
+		if (0 == __sync_val_compare_and_swap(&lock_var, 0, 1))
+			return;
+	}
+
+	while (1) {
+		int futex_ret = futex(&lock_var, FUTEX_WAIT, 1, NULL, NULL, 0);
+		if (futex_ret == 0 && lock_var != 0) { /* spurious wake-up */
+			continue;
+		}
+		int CAS_ret = __sync_val_compare_and_swap(&lock_var, 0, 1);
+		if (CAS_ret == 0)
+			return;
+		else
+			continue;
+	}
+}
+
+void FutexLock::unlock() {
+	__sync_val_compare_and_swap(&lock_var, 1, 0);
+	futex(&lock_var, FUTEX_WAKE, 1, NULL, NULL, 0);
+}
+```
+
+Above are naive implementation of user space blocking synchronization.
+
+In lock phase, thread try to acquire the lock using hardware atomic operation (compare and swap).
+
+If it succeedes, it acquires the lock and goes to the critical section.
+
+If not, it call futex with FUTEX_WAIT operation flag, and sleeps until the value _uaddr_ points to equals to _val_.
+
+The lock releaser, on the other hand, calls futex with FUTEX_WAKE operation flag.
+
+In this implementation, releaser wakes a single thread.
+
+But the number of threads releaser wakes up can vary.
+
+Even the lock acquirer is woken up, it tries atomic operation again to prevent _supurious wakeup_.
