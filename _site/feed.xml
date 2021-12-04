@@ -1,17 +1,70 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2021-07-13T22:52:30+09:00</updated><id>/feed.xml</id><title type="html">Your awesome title</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><entry><title type="html">Welcome to Jekyll!</title><link href="/jekyll/update/2021/07/13/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to Jekyll!" /><published>2021-07-13T22:51:57+09:00</published><updated>2021-07-13T22:51:57+09:00</updated><id>/jekyll/update/2021/07/13/welcome-to-jekyll</id><content type="html" xml:base="/jekyll/update/2021/07/13/welcome-to-jekyll.html">&lt;p&gt;You’ll find this post in your &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jekyll serve&lt;/code&gt;, which launches a web server and auto-regenerates your site when a file is updated.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2021-12-05T01:01:50+09:00</updated><id>/feed.xml</id><title type="html">Jangwoong Kim’s Blog</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><entry><title type="html">Futex</title><link href="/2021/07/13/futex.html" rel="alternate" type="text/html" title="Futex" /><published>2021-07-13T00:00:00+09:00</published><updated>2021-07-13T00:00:00+09:00</updated><id>/2021/07/13/futex</id><content type="html" xml:base="/2021/07/13/futex.html">&lt;p&gt;Futex is abbreivation of Fast Userspace muTEX.&lt;/p&gt;
 
-&lt;p&gt;Jekyll requires blog post files to be named according to the following format:&lt;/p&gt;
+&lt;p&gt;It is a linux system call but it’s wrapper is not shipped in libc implementations. (AFIAK)&lt;/p&gt;
 
-&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;YEAR-MONTH-DAY-title.MARKUP&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;Therefore, to call futex you might define your own wrapper like …&lt;/p&gt;
 
-&lt;p&gt;Where &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;YEAR&lt;/code&gt; is a four-digit number, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MONTH&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DAY&lt;/code&gt; are both two-digit numbers, and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MARKUP&lt;/code&gt; is the file extension representing the format used in the file. After that, include the necessary front matter. Take a look at the source for this post to get an idea about how it works.&lt;/p&gt;
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;int futex(int* uaddr, int futex_op, int val, const struct timespec* timeout,
+		int* uaddr2, int val3) {
+	return syscall(SYS_futex, uaddr, futex_op, val, timeout, uaddr2, val3);
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;p&gt;Jekyll also offers powerful support for code snippets:&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;uaddr&lt;/em&gt; is the address of a variable that you want to use as watchpoint.&lt;/p&gt;
 
-&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-ruby&quot; data-lang=&quot;ruby&quot;&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;print_hi&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-  &lt;span class=&quot;nb&quot;&gt;puts&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;Hi, &lt;/span&gt;&lt;span class=&quot;si&quot;&gt;#{&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;end&lt;/span&gt;
-&lt;span class=&quot;n&quot;&gt;print_hi&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;'Tom'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;c1&quot;&gt;#=&amp;gt; prints 'Hi, Tom' to STDOUT.&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+&lt;p&gt;&lt;em&gt;uaddr&lt;/em&gt; needs to be 4-bytes aligned.&lt;/p&gt;
 
-&lt;p&gt;Check out the &lt;a href=&quot;https://jekyllrb.com/docs/home&quot;&gt;Jekyll docs&lt;/a&gt; for more info on how to get the most out of Jekyll. File all bugs/feature requests at &lt;a href=&quot;https://github.com/jekyll/jekyll&quot;&gt;Jekyll’s GitHub repo&lt;/a&gt;. If you have questions, you can ask them on &lt;a href=&quot;https://talk.jekyllrb.com/&quot;&gt;Jekyll Talk&lt;/a&gt;.&lt;/p&gt;</content><author><name></name></author><category term="jekyll" /><category term="update" /><summary type="html">You’ll find this post in your _posts directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run jekyll serve, which launches a web server and auto-regenerates your site when a file is updated.</summary></entry></feed>
+&lt;p&gt;&lt;em&gt;futex_op&lt;/em&gt; is the operation you want to perform, two major operation is FUTEX_WAIT and FUTEX_WAKE.&lt;/p&gt;
+
+&lt;p&gt;FUTEX_WAIT is used when you want to sleep until the value &lt;em&gt;uaddr&lt;/em&gt; points to holds &lt;em&gt;val&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;If not, futex() returns immediately.&lt;/p&gt;
+
+&lt;p&gt;FUTEX_WAKE is used to wake up threads sleeping on the futex with &lt;em&gt;uaddr&lt;/em&gt; pointers.&lt;/p&gt;
+
+&lt;p&gt;It wakes &lt;em&gt;val&lt;/em&gt; number of threads and returns the number of actually woken up.&lt;/p&gt;
+
+&lt;p&gt;futex is used in userspace blocking synchronization.&lt;/p&gt;
+
+&lt;p&gt;For example, pthreads mutex and conditional variable is implemented using futex.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;void FutexLock::lock() {
+	for (int i = 0 ; i &amp;lt; N_BACKOFF ; i++) {
+		if (0 == __sync_val_compare_and_swap(&amp;amp;lock_var, 0, 1))
+			return;
+	}
+
+	while (1) {
+		int futex_ret = futex(&amp;amp;lock_var, FUTEX_WAIT, 1, NULL, NULL, 0);
+		if (futex_ret == 0 &amp;amp;&amp;amp; lock_var != 0) { /* spurious wake-up */
+			continue;
+		}
+		int CAS_ret = __sync_val_compare_and_swap(&amp;amp;lock_var, 0, 1);
+		if (CAS_ret == 0)
+			return;
+		else
+			continue;
+	}
+}
+
+void FutexLock::unlock() {
+	__sync_val_compare_and_swap(&amp;amp;lock_var, 1, 0);
+	futex(&amp;amp;lock_var, FUTEX_WAKE, 1, NULL, NULL, 0);
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Above are naive implementation of user space blocking synchronization.&lt;/p&gt;
+
+&lt;p&gt;In lock phase, thread try to acquire the lock using hardware atomic operation (compare and swap).&lt;/p&gt;
+
+&lt;p&gt;If it succeedes, it acquires the lock and goes to the critical section.&lt;/p&gt;
+
+&lt;p&gt;If not, it call futex with FUTEX_WAIT operation flag, and sleeps until the value &lt;em&gt;uaddr&lt;/em&gt; points to equals to &lt;em&gt;val&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;The lock releaser, on the other hand, calls futex with FUTEX_WAKE operation flag.&lt;/p&gt;
+
+&lt;p&gt;In this implementation, releaser wakes a single thread.&lt;/p&gt;
+
+&lt;p&gt;But the number of threads releaser wakes up can vary.&lt;/p&gt;
+
+&lt;p&gt;Even the lock acquirer is woken up, it tries atomic operation again to prevent &lt;em&gt;supurious wakeup&lt;/em&gt;.&lt;/p&gt;</content><author><name></name></author><summary type="html">Futex is abbreivation of Fast Userspace muTEX.</summary></entry></feed>

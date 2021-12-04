@@ -1,0 +1,70 @@
+<p>Futex is abbreivation of Fast Userspace muTEX.</p>
+
+<p>It is a linux system call but it’s wrapper is not shipped in libc implementations. (AFIAK)</p>
+
+<p>Therefore, to call futex you might define your own wrapper like …</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>int futex(int* uaddr, int futex_op, int val, const struct timespec* timeout,
+		int* uaddr2, int val3) {
+	return syscall(SYS_futex, uaddr, futex_op, val, timeout, uaddr2, val3);
+}
+</code></pre></div></div>
+
+<p><em>uaddr</em> is the address of a variable that you want to use as watchpoint.</p>
+
+<p><em>uaddr</em> needs to be 4-bytes aligned.</p>
+
+<p><em>futex_op</em> is the operation you want to perform, two major operation is FUTEX_WAIT and FUTEX_WAKE.</p>
+
+<p>FUTEX_WAIT is used when you want to sleep until the value <em>uaddr</em> points to holds <em>val</em>.</p>
+
+<p>If not, futex() returns immediately.</p>
+
+<p>FUTEX_WAKE is used to wake up threads sleeping on the futex with <em>uaddr</em> pointers.</p>
+
+<p>It wakes <em>val</em> number of threads and returns the number of actually woken up.</p>
+
+<p>futex is used in userspace blocking synchronization.</p>
+
+<p>For example, pthreads mutex and conditional variable is implemented using futex.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>void FutexLock::lock() {
+	for (int i = 0 ; i &lt; N_BACKOFF ; i++) {
+		if (0 == __sync_val_compare_and_swap(&amp;lock_var, 0, 1))
+			return;
+	}
+
+	while (1) {
+		int futex_ret = futex(&amp;lock_var, FUTEX_WAIT, 1, NULL, NULL, 0);
+		if (futex_ret == 0 &amp;&amp; lock_var != 0) { /* spurious wake-up */
+			continue;
+		}
+		int CAS_ret = __sync_val_compare_and_swap(&amp;lock_var, 0, 1);
+		if (CAS_ret == 0)
+			return;
+		else
+			continue;
+	}
+}
+
+void FutexLock::unlock() {
+	__sync_val_compare_and_swap(&amp;lock_var, 1, 0);
+	futex(&amp;lock_var, FUTEX_WAKE, 1, NULL, NULL, 0);
+}
+</code></pre></div></div>
+
+<p>Above are naive implementation of user space blocking synchronization.</p>
+
+<p>In lock phase, thread try to acquire the lock using hardware atomic operation (compare and swap).</p>
+
+<p>If it succeedes, it acquires the lock and goes to the critical section.</p>
+
+<p>If not, it call futex with FUTEX_WAIT operation flag, and sleeps until the value <em>uaddr</em> points to equals to <em>val</em>.</p>
+
+<p>The lock releaser, on the other hand, calls futex with FUTEX_WAKE operation flag.</p>
+
+<p>In this implementation, releaser wakes a single thread.</p>
+
+<p>But the number of threads releaser wakes up can vary.</p>
+
+<p>Even the lock acquirer is woken up, it tries atomic operation again to prevent <em>supurious wakeup</em>.</p>
