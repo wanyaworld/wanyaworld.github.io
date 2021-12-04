@@ -31,9 +31,9 @@ SYSCALL_DEFINE6(futex, u32 __user *, uaddr, int, op, u32, val,
 }
 ```
 
-Until 5.15 kernel, futex has been implemented in _kernel/futex.c_ file. However, from 5.16 kernel, futex has dedicated directory (_kernel/futex_), and it's implementation is separated into multiple file. 
+Until 5.15 kernel, futex has been implemented in _kernel/futex.c_ file. However, from 5.16 kernel, futex has dedicated directory (_kernel/futex_), and it's implementation is separated into multiple files. 
 
-The entry point of futex syscall is defined at _syscalls.c_. All of futex operation is multiflex via _do\_futex_() function, although the community is considering defining syscall for each operation [link](https://linuxplumbersconf.org/event/11/contributions/1058/attachments/788/1481/futex_lpc2021.pdf).
+The entry point of futex syscall is defined at _syscalls.c_. All of futex operations are multiflexed via _do\_futex_() function, although the community is considering defining syscall for each operation [link](https://linuxplumbersconf.org/event/11/contributions/1058/attachments/788/1481/futex_lpc2021.pdf).
 
 _<kernel/futex/syscalls.c>_
 ```
@@ -130,7 +130,7 @@ struct futex_q {
 ```
 
 
-futex_wait is routed to _futex\_wait_() in waitwait.c. Here, we allocate a futex_q data structure. _futex\_q_ is futex's hashed queue entry defined for each waiting task. In futex_wait, the task enqueues a _futex\_q_, and when another thread calls futex_wake, dequeue an _futex\_q_ entry and wakes up sleeping thread. 
+futex_wait is routed to _futex\_wait_() in _waitwake.c_. Here, we allocate a futex_q data structure. _futex\_q_ is futex's hashed queue entry defined for each waiting task. In futex_wait, the task enqueues a _futex\_q_, and when another thread calls futex_wake, dequeues an _futex\_q_ entry and wakes up the sleeping thread. 
 
 _<kernel/futex/waitwake.c>_
 ```
@@ -171,7 +171,7 @@ retry_private:
 }
 ```
 
-_futex\_wait\_setup_() prepares to wait on the futex by generating appropriate futex key, and loading it into futex_q. Then it compares _addr_'s value with expected value (_val_). If returns 0 if expected value matchs, and returns 1 if doesn't.
+_futex\_wait\_setup_() prepares to wait on the futex by generating appropriate futex key, and loading it into futex_q. Then it compares _addr_'s value with expected value (_val_). It returns 0 if expected value matchs, returns 1 if doesn't.
 
 _<kernel/futex/core.c>_
 ```
@@ -233,7 +233,7 @@ There are three cases by which futex key is generated.
 
 First, if futex is private futex (futex is shared among only threads in same process), it is enough to use virtual address of the futex variable (_uaddr_).
 
-Second, if (global) futex variable is on anon-page, since addr is not enough to uniquely identify futex, we use curren thread's _mm\_struct_ and _addr_.
+Second, if (global) futex variable is on anon-page, since addr is not enough to uniquely identify futex hash bucekt, we use current thread's _mm\_struct_ and _addr_.
 
 Lastly, if (global) futex variable is file-backed, we use inode number and page offset.
 
@@ -256,9 +256,9 @@ struct futex_hash_bucket *futex_q_lock(struct futex_q *q)
 ```
 _futex\_q\_lock_() increases corresponding hash bucket's waiter counter and acquires hash bucket's spin lock. It increses counter before acquiring hash bucket lock. 
 
-The change of order might cause wake to miss a waiter waiting for the hash bucket lock, because waker firstly checks the hash bucket's wainter count and if it is zero, does not perform any wake-ups. 
+The change of order might cause waker to miss a waiter waiting for the hash bucket lock, because waker firstly checks the hash bucket's wainter count and if it is zero, it does not perform any wake-ups. 
 
-Back to futex_wait, if futex_wait_setup returns non-zero value, meaning futex variable equals the expected value and there's no need to sleep, it goes to out and returns and control is switched to user-space.
+Back to futex_wait, if _futex\_wait\_setup_ returns non-zero value, meaning futex variable equals the expected value and there's no need to sleep, it goes to _out_ and returns, thus control is passed to user-space.
 
 If not, it enqueues its _futex\_q_ and sleeps.
 
@@ -279,4 +279,4 @@ void futex_wait_queue(struct futex_hash_bucket *hb, struct futex_q *q,
 	__set_current_state(TASK_RUNNING);
 }
 ```
-Before sleeping it changes the threads' scheduling status to _TASK\_INTERRUPTIBLE_ (although the process state does not change before it calls _schedule_()) , then enqueues _futex\_q_ in _futex\_queue_(), then _schedules_().
+Before sleeping, it changes the threads' scheduling status to _TASK\_INTERRUPTIBLE_ (although the process does not sleep until it calls _schedule_()) , then enqueues _futex\_q_ in _futex\_queue_(), then _schedules_().
