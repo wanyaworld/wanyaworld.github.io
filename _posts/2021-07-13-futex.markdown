@@ -3,7 +3,7 @@ layout: post
 title: "Introduction to Futex"
 ---
 
-## Introduction to Futex"
+## Introduction to Futex
 
 Futex is abbreivation of Fast Userspace muTEX.
 
