@@ -33,7 +33,7 @@ SYSCALL_DEFINE6(futex, u32 __user *, uaddr, int, op, u32, val,
 
 Until 5.15 kernel, futex has been implemented in _kernel/futex.c_ file. However, from 5.16 kernel, futex has dedicated directory (_kernel/futex_), and it's implementation is separated into multiple files. 
 
-The entry point of futex syscall is defined at _syscalls.c_. All of futex operations are multiflexed via _do\_futex_() function, although the community is considering defining syscall for each operation [link](https://linuxplumbersconf.org/event/11/contributions/1058/attachments/788/1481/futex_lpc2021.pdf).
+The entry point of futex syscall is defined at _syscalls.c_. All of futex operations are multiflexed via _do\_futex_() function, meanwhile the community is considering defining syscall for each operation [link](https://linuxplumbersconf.org/event/11/contributions/1058/attachments/788/1481/futex_lpc2021.pdf).
 
 _<kernel/futex/syscalls.c>_
 ```
