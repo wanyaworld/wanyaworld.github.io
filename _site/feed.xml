@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2021-12-05T01:28:53+09:00</updated><id>/feed.xml</id><title type="html">Jangwoong Kim’s Blog</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><entry><title type="html">Futex in Kernel Implementation (1) - futex_wait</title><link href="/2021/12/04/futex-kernel.html" rel="alternate" type="text/html" title="Futex in Kernel Implementation (1) - futex_wait" /><published>2021-12-04T00:00:00+09:00</published><updated>2021-12-04T00:00:00+09:00</updated><id>/2021/12/04/futex-kernel</id><content type="html" xml:base="/2021/12/04/futex-kernel.html">&lt;h2 id=&quot;futex-in-kernel-implementation-1---futex_wait&quot;&gt;Futex in Kernel Implementation (1) - futex_wait&lt;/h2&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2021-12-05T01:37:10+09:00</updated><id>/feed.xml</id><title type="html">Jangwoong Kim’s Blog</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><entry><title type="html">Futex in Kernel Implementation (1) - futex_wait</title><link href="/2021/12/04/futex-kernel.html" rel="alternate" type="text/html" title="Futex in Kernel Implementation (1) - futex_wait" /><published>2021-12-04T00:00:00+09:00</published><updated>2021-12-04T00:00:00+09:00</updated><id>/2021/12/04/futex-kernel</id><content type="html" xml:base="/2021/12/04/futex-kernel.html">&lt;h2 id=&quot;futex-in-kernel-implementation-1---futex_wait&quot;&gt;Futex in Kernel Implementation (1) - futex_wait&lt;/h2&gt;
 &lt;p&gt;This article demonstrates kernel implementation of futex.&lt;/p&gt;
 
 &lt;p&gt;&lt;em&gt;&amp;lt;kernel/futex/syscalls.c&amp;gt;&lt;/em&gt;&lt;/p&gt;
@@ -210,9 +210,19 @@ out:
 	return err;
 }
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;| &lt;img src=&quot;https://github.com/wanyaworld/wanyaworld.github.io/blob/master/_posts/dvh-futexes.png&quot; alt=&quot;futex hash table&quot; /&gt; |
-| :–: |
-| futex hash table |&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;&lt;img src=&quot;https://raw.githubusercontent.com/wanyaworld/wanyaworld.github.io/master/_posts/dvh-futexes.png&quot; alt=&quot;futex hash table&quot; /&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;futex hash table&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
 
 &lt;p&gt;There are three cases by which futex key is generated.&lt;/p&gt;
 
@@ -262,7 +272,7 @@ out:
 	__set_current_state(TASK_RUNNING);
 }
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;Before sleeping it changes the threads’ scheduling status to &lt;em&gt;TASK_INTERRUPTIBLE&lt;/em&gt; (although the process state does not change before it calls &lt;em&gt;schedule&lt;/em&gt;()) , then enqueues &lt;em&gt;futex_q&lt;/em&gt; in &lt;em&gt;futex_queue&lt;/em&gt;(), then &lt;em&gt;schedules&lt;/em&gt;().&lt;/p&gt;</content><author><name></name></author><summary type="html">Futex in Kernel Implementation (1) - futex_wait This article demonstrates kernel implementation of futex.</summary></entry><entry><title type="html">Introduction to Futex</title><link href="/2021/07/13/futex.html" rel="alternate" type="text/html" title="Introduction to Futex" /><published>2021-07-13T00:00:00+09:00</published><updated>2021-07-13T00:00:00+09:00</updated><id>/2021/07/13/futex</id><content type="html" xml:base="/2021/07/13/futex.html">&lt;h2 id=&quot;introduction-to-futex&quot;&gt;Introduction to Futex”&lt;/h2&gt;
+&lt;p&gt;Before sleeping it changes the threads’ scheduling status to &lt;em&gt;TASK_INTERRUPTIBLE&lt;/em&gt; (although the process state does not change before it calls &lt;em&gt;schedule&lt;/em&gt;()) , then enqueues &lt;em&gt;futex_q&lt;/em&gt; in &lt;em&gt;futex_queue&lt;/em&gt;(), then &lt;em&gt;schedules&lt;/em&gt;().&lt;/p&gt;</content><author><name></name></author><summary type="html">Futex in Kernel Implementation (1) - futex_wait This article demonstrates kernel implementation of futex.</summary></entry><entry><title type="html">Introduction to Futex</title><link href="/2021/07/13/futex.html" rel="alternate" type="text/html" title="Introduction to Futex" /><published>2021-07-13T00:00:00+09:00</published><updated>2021-07-13T00:00:00+09:00</updated><id>/2021/07/13/futex</id><content type="html" xml:base="/2021/07/13/futex.html">&lt;h2 id=&quot;introduction-to-futex&quot;&gt;Introduction to Futex&lt;/h2&gt;
 
 &lt;p&gt;Futex is abbreivation of Fast Userspace muTEX.&lt;/p&gt;
 
@@ -333,4 +343,4 @@ void FutexLock::unlock() {
 
 &lt;p&gt;But the number of threads releaser wakes up can vary.&lt;/p&gt;
 
-&lt;p&gt;Even the lock acquirer is woken up, it tries atomic operation again to prevent &lt;em&gt;supurious wakeup&lt;/em&gt;.&lt;/p&gt;</content><author><name></name></author><summary type="html">Introduction to Futex”</summary></entry></feed>
+&lt;p&gt;Even the lock acquirer is woken up, it tries atomic operation again to prevent &lt;em&gt;supurious wakeup&lt;/em&gt;.&lt;/p&gt;</content><author><name></name></author><summary type="html">Introduction to Futex</summary></entry></feed>

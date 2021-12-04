@@ -222,9 +222,11 @@ out:
 	return err;
 }
 ```
-| ![futex hash table](https://github.com/wanyaworld/wanyaworld.github.io/blob/master/_posts/dvh-futexes.png) |
+
+| ![futex hash table](https://raw.githubusercontent.com/wanyaworld/wanyaworld.github.io/master/_posts/dvh-futexes.png) |
 | :--: |
 | futex hash table |
+
 
 
 There are three cases by which futex key is generated. 
