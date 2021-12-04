@@ -1,0 +1,266 @@
+<h2 id="futex-in-kernel-implementation-1---futex_wait">Futex in Kernel Implementation (1) - futex_wait</h2>
+
+<p>This article demonstrates kernel implementation of futex.</p>
+
+<p><em>&lt;kernel/futex/syscalls.c&gt;</em></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>SYSCALL_DEFINE6(futex, u32 __user *, uaddr, int, op, u32, val,
+		const struct __kernel_timespec __user *, utime,
+		u32 __user *, uaddr2, u32, val3)
+{
+	int ret, cmd = op &amp; FUTEX_CMD_MASK;
+	ktime_t t, *tp = NULL;
+	struct timespec64 ts;
+    
+	if (utime &amp;&amp; futex_cmd_has_timeout(cmd)) {
+		if (unlikely(should_fail_futex(!(op &amp; FUTEX_PRIVATE_FLAG))))
+			return -EFAULT;
+		if (get_timespec64(&amp;ts, utime))
+			return -EFAULT;
+		ret = futex_init_timeout(cmd, op, &amp;ts, &amp;t);
+		if (ret)
+			return ret;
+		tp = &amp;t;
+	}
+
+	return do_futex(uaddr, op, val, tp, uaddr2, (unsigned long)utime, val3);
+}
+</code></pre></div></div>
+
+<p>Until 5.15 kernel, futex has been implemented in <em>kernel/futex.c</em> file. However, from 5.16 kernel, futex has dedicated directory (<em>kernel/futex</em>), and it’s implementation is separated into multiple file.</p>
+
+<p>The entry point of futex syscall is defined at <em>syscalls.c</em>. All of futex operation is multiflex via <em>do_futex</em>() function, although the community is considering defining syscall for each operation <a href="https://linuxplumbersconf.org/event/11/contributions/1058/attachments/788/1481/futex_lpc2021.pdf">link</a>.</p>
+
+<p><em>&lt;kernel/futex/syscalls.c&gt;</em></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>long do_futex(u32 __user *uaddr, int op, u32 val, ktime_t *timeout,
+		u32 __user *uaddr2, u32 val2, u32 val3)
+{ ...
+	switch (cmd) {
+	case FUTEX_WAIT:
+		val3 = FUTEX_BITSET_MATCH_ANY;
+		fallthrough;
+	case FUTEX_WAIT_BITSET:
+		return futex_wait(uaddr, flags, val, timeout, val3);
+	case FUTEX_WAKE:
+		val3 = FUTEX_BITSET_MATCH_ANY;
+		fallthrough;
+	case FUTEX_WAKE_BITSET:
+		return futex_wake(uaddr, flags, val, val3);
+	case FUTEX_REQUEUE:
+</code></pre></div></div>
+<p>In <em>do_futex</em>(), the request is, with appropriate flag being set, routed to corresponding function. This article only deals with futex_wait and futex_wake.</p>
+
+<p><em>&lt;kernel/futex/waitwake.c&gt;</em></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val, ktime_t *abs_time, u32 bitset)
+{
+	struct hrtimer_sleeper timeout, *to;
+	struct restart_block *restart;
+	struct futex_hash_bucket *hb;
+	struct futex_q q = futex_q_init;
+	int ret;
+
+	if (!bitset)
+		return -EINVAL;
+	q.bitset = bitset;
+
+	to = futex_setup_timer(abs_time, &amp;timeout, flags,
+			       current-&gt;timer_slack_ns);
+retry:
+	ret = futex_wait_setup(uaddr, val, flags, &amp;q, &amp;hb);
+	if (ret)
+		goto out;
+
+	futex_wait_queue(hb, &amp;q, to);
+
+	ret = 0;
+	if (!futex_unqueue(&amp;q))
+		goto out;
+	ret = -ETIMEDOUT;
+	if (to &amp;&amp; !to-&gt;task)
+		goto out;
+
+	if (!signal_pending(current))
+		goto retry;
+
+	ret = -ERESTARTSYS;
+	if (!abs_time)
+		goto out;
+
+	restart = &amp;current-&gt;restart_block;
+	restart-&gt;futex.uaddr = uaddr;
+	restart-&gt;futex.val = val;
+	restart-&gt;futex.time = *abs_time;
+	restart-&gt;futex.bitset = bitset;
+	restart-&gt;futex.flags = flags | FLAGS_HAS_TIMEOUT;
+
+	ret = set_restart_fn(restart, futex_wait_restart);
+
+out:
+	if (to) {
+		hrtimer_cancel(&amp;to-&gt;timer);
+		destroy_hrtimer_on_stack(&amp;to-&gt;timer);
+	}
+	return ret;
+}
+</code></pre></div></div>
+
+<p><em>&lt;kernel/futex/futex.h&gt;</em></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>struct futex_q {
+	struct plist_node list;
+
+	struct task_struct *task;
+	spinlock_t *lock_ptr;
+	union futex_key key;
+	struct futex_pi_state *pi_state;
+	struct rt_mutex_waiter *rt_waiter;
+	union futex_key *requeue_pi_key;
+	u32 bitset;
+	atomic_t requeue_state;
+#ifdef CONFIG_PREEMPT_RT
+	struct rcuwait requeue_wait;
+#endif
+} __randomize_layout;
+</code></pre></div></div>
+
+<p>futex_wait is routed to <em>futex_wait</em>() in waitwait.c. Here, we allocate a futex_q data structure. <em>futex_q</em> is futex’s hashed queue entry defined for each waiting task. In futex_wait, the task enqueues a <em>futex_q</em>, and when another thread calls futex_wake, dequeue an <em>futex_q</em> entry and wakes up sleeping thread.</p>
+
+<p><em>&lt;kernel/futex/waitwake.c&gt;</em></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>int futex_wait_setup(u32 __user *uaddr, u32 val, unsigned int flags,
+		     struct futex_q *q, struct futex_hash_bucket **hb)
+{
+	u32 uval;
+	int ret;
+retry:
+	ret = get_futex_key(uaddr, flags &amp; FLAGS_SHARED, &amp;q-&gt;key, FUTEX_READ);
+	if (unlikely(ret != 0))
+		return ret;
+
+retry_private:
+	*hb = futex_q_lock(q);
+
+	ret = futex_get_value_locked(&amp;uval, uaddr);
+
+	if (ret) {
+		futex_q_unlock(*hb);
+
+		ret = get_user(uval, uaddr);
+		if (ret)
+			return ret;
+
+		if (!(flags &amp; FLAGS_SHARED))
+			goto retry_private;
+
+		goto retry;
+	}
+
+	if (uval != val) {
+		futex_q_unlock(*hb);
+		ret = -EWOULDBLOCK;
+	}
+
+	return ret;
+}
+</code></pre></div></div>
+
+<p><em>futex_wait_setup</em>() prepares to wait on the futex by generating appropriate futex key, and loading it into futex_q. Then it compares <em>addr</em>’s value with expected value (<em>val</em>). If returns 0 if expected value matchs, and returns 1 if doesn’t.</p>
+
+<p><em>&lt;kernel/futex/core.c&gt;</em></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>int get_futex_key(u32 __user *uaddr, bool fshared, union futex_key *key,
+		  enum futex_access rw)
+{
+	unsigned long address = (unsigned long)uaddr;
+	struct mm_struct *mm = current-&gt;mm;
+	struct page *page, *tail;
+	struct address_space *mapping;
+	int err, ro = 0;
+
+`	...
+
+	if (!fshared) {
+		key-&gt;private.mm = mm;
+		key-&gt;private.address = address;
+		return 0;
+	}
+	
+    ...
+    
+	if (PageAnon(page)) {
+		if (unlikely(should_fail_futex(true)) || ro) {
+			err = -EFAULT;
+			goto out;
+		}
+
+		key-&gt;both.offset |= FUT_OFF_MMSHARED; /* ref taken on mm */
+		key-&gt;private.mm = mm;
+		key-&gt;private.address = address;
+
+	} 
+    
+    else {
+		struct inode *inode;
+		
+        ...
+
+		key-&gt;both.offset |= FUT_OFF_INODE; /* inode-based key */
+		key-&gt;shared.i_seq = get_inode_sequence_number(inode);
+		key-&gt;shared.pgoff = page_to_pgoff(tail);
+		rcu_read_unlock();
+	}
+
+out:
+	put_page(page);
+	return err;
+}
+</code></pre></div></div>
+<p>| <img src="https://github.com/wanyaworld/wanyaworld.github.io/blob/master/_posts/dvh-futexes.png" alt="futex hash table" /> |
+| :–: |
+| futex hash table |</p>
+
+<p>There are three cases by which futex key is generated.</p>
+
+<p>First, if futex is private futex (futex is shared among only threads in same process), it is enough to use virtual address of the futex variable (<em>uaddr</em>).</p>
+
+<p>Second, if (global) futex variable is on anon-page, since addr is not enough to uniquely identify futex, we use curren thread’s <em>mm_struct</em> and <em>addr</em>.</p>
+
+<p>Lastly, if (global) futex variable is file-backed, we use inode number and page offset.</p>
+
+<p><em>&lt;kernel/futex/core.c&gt;</em></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>struct futex_hash_bucket *futex_q_lock(struct futex_q *q)
+	__acquires(&amp;hb-&gt;lock)
+{
+	struct futex_hash_bucket *hb;
+
+	hb = futex_hash(&amp;q-&gt;key);
+
+	futex_hb_waiters_inc(hb);
+
+	q-&gt;lock_ptr = &amp;hb-&gt;lock;
+
+	spin_lock(&amp;hb-&gt;lock);
+	return hb;
+}
+</code></pre></div></div>
+<p><em>futex_q_lock</em>() increases corresponding hash bucket’s waiter counter and acquires hash bucket’s spin lock. It increses counter before acquiring hash bucket lock.</p>
+
+<p>The change of order might cause wake to miss a waiter waiting for the hash bucket lock, because waker firstly checks the hash bucket’s wainter count and if it is zero, does not perform any wake-ups.</p>
+
+<p>Back to futex_wait, if futex_wait_setup returns non-zero value, meaning futex variable equals the expected value and there’s no need to sleep, it goes to out and returns and control is switched to user-space.</p>
+
+<p>If not, it enqueues its <em>futex_q</em> and sleeps.</p>
+
+<p><em>&lt;kernel/futex/waitwake.c&gt;</em></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>void futex_wait_queue(struct futex_hash_bucket *hb, struct futex_q *q,
+			    struct hrtimer_sleeper *timeout)
+{
+	set_current_state(TASK_INTERRUPTIBLE);
+	futex_queue(q, hb);
+
+	...
+
+	if (likely(!plist_node_empty(&amp;q-&gt;list))) {
+		if (!timeout || timeout-&gt;task)
+			freezable_schedule();
+	}
+	__set_current_state(TASK_RUNNING);
+}
+</code></pre></div></div>
+<p>Before sleeping it changes the threads’ scheduling status to <em>TASK_INTERRUPTIBLE</em> (although the process state does not change before it calls <em>schedule</em>()) , then enqueues <em>futex_q</em> in <em>futex_queue</em>(), then <em>schedules</em>().</p>

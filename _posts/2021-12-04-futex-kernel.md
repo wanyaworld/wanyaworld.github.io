@@ -1,6 +1,3 @@
----
-published: false
----
 ## Futex in Kernel Implementation (1) - futex_wait
 
 This article demonstrates kernel implementation of futex. 
