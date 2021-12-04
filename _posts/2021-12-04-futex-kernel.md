@@ -1,5 +1,9 @@
-## Futex in Kernel Implementation (1) - futex_wait
+---
+layout: post
+title: "Futex in Kernel Implementation (1) - futex_wait"
+---
 
+## Futex in Kernel Implementation (1) - futex_wait
 This article demonstrates kernel implementation of futex. 
 
 _<kernel/futex/syscalls.c>_
