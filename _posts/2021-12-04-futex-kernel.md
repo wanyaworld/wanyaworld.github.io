@@ -221,7 +221,7 @@ out:
 	return err;
 }
 ```
-| ![futex hash table]({{site.baseurl}}/_posts/dvh-futexes.png) |
+| ![futex hash table](https://github.com/wanyaworld/wanyaworld.github.io/blob/master/_posts/dvh-futexes.png) |
 | :--: |
 | futex hash table |
 
